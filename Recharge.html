@@ -1,0 +1,147 @@
+
+
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BMS Secure Pay</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;900&display=swap');
+        body { font-family: 'Poppins', sans-serif; background-color: #f4f7f9; }
+        .amt-pill { border: 2px solid #ddd; cursor: pointer; transition: 0.3s; }
+        .amt-pill.active { background: #ef4444; color: white; border-color: #ef4444; transform: scale(1.05); }
+    </style>
+</head>
+<body class="pb-10">
+
+    <div class="bg-red-600 p-6 text-white rounded-b-[2.5rem] shadow-xl">
+        <div class="flex items-center gap-4">
+            <button onclick="window.history.back()"><i class="fas fa-arrow-left text-xl"></i></button>
+            <h1 class="text-xl font-black italic uppercase text-white">BMS FAST RECHARGE</h1>
+        </div>
+    </div>
+
+    <div class="p-5">
+        <div id="step-1" class="bg-white p-6 rounded-3xl shadow-lg border">
+            <p class="text-[10px] font-black text-gray-400 uppercase mb-2">Select Amount</p>
+            <div class="flex items-center border-b-4 border-red-600 pb-2">
+                <span class="text-3xl font-black mr-2">₹</span>
+                <input type="number" id="final-amount" value="100" class="w-full text-4xl font-black outline-none bg-transparent" readonly>
+            </div>
+
+            <div class="grid grid-cols-3 gap-3 mt-6">
+                <div onclick="setVal(this, 100)" class="amt-pill active py-3 rounded-xl text-center font-bold">₹100</div>
+                <div onclick="setVal(this, 500)" class="amt-pill py-3 rounded-xl text-center font-bold">₹500</div>
+                <div onclick="setVal(this, 1000)" class="amt-pill py-3 rounded-xl text-center font-bold">₹1000</div>
+                <div onclick="setVal(this, 2000)" class="amt-pill py-3 rounded-xl text-center font-bold">₹2000</div>
+                <div onclick="setVal(this, 5000)" class="amt-pill py-3 rounded-xl text-center font-bold">₹5000</div>
+                <div onclick="setVal(this, 10000)" class="amt-pill py-3 rounded-xl text-center font-bold">₹10000</div>
+            </div>
+            <button onclick="showPayment()" class="w-full mt-6 bg-red-600 text-white py-4 rounded-2xl font-black shadow-lg">PROCEED TO PAY</button>
+        </div>
+
+        <div id="payment-section" class="mt-6 bg-white p-6 rounded-3xl shadow-lg text-center hidden">
+            <div class="flex flex-col items-center">
+                <img id="qr-image" src="" alt="Scan to Pay" class="w-48 h-48 border-4 border-gray-100 rounded-xl mb-2">
+                
+                <button onclick="downloadQR()" class="text-blue-600 font-bold text-xs mb-4"><i class="fas fa-download mr-1"></i> Download QR Code</button>
+            </div>
+
+            <button onclick="openUPIApp()" class="w-full bg-green-600 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 mb-6">
+                <i class="fas fa-bolt"></i> OPEN ALL UPI APPS
+            </button>
+            
+            <div class="mt-4 border-t-2 border-dashed pt-6 text-left">
+                <p class="text-xs font-black text-red-600 mb-2 uppercase tracking-tighter">Step 2: Submit 12-Digit UTR Number</p>
+                <input type="number" id="utr-input" oninput="validateUTR()" placeholder="Enter Transaction UTR" class="w-full bg-gray-50 p-4 rounded-xl font-bold border-2 outline-none focus:border-green-500">
+                
+                <button id="submit-btn" disabled onclick="submitUTR()" class="w-full mt-4 bg-gray-300 text-white py-4 rounded-xl font-black uppercase cursor-not-allowed">Confirm Submission</button>
+                <p id="utr-error" class="text-[10px] text-red-500 mt-2 font-bold hidden">! Please enter correct 12 digit UTR number</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyAoohz6Nzes8Aa5RC8rTHN-mOxpyQVSbgw",
+            authDomain: "bms--game.firebaseapp.com",
+            databaseURL: "https://bms--game-default-rtdb.firebaseio.com",
+            projectId: "bms--game",
+            appId: "1:787142148166:web:ecb5fae61084a079d50a47"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const userPhone = localStorage.getItem("userPhone");
+        const MY_UPI = "sanjaykumar89909154-1@oksbi";
+
+        function setVal(el, amt) {
+            document.querySelectorAll('.amt-pill').forEach(b => b.classList.remove('active'));
+            el.classList.add('active');
+            document.getElementById('final-amount').value = amt;
+        }
+
+        function showPayment() {
+            const amt = document.getElementById('final-amount').value;
+            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=upi://pay?pa=${MY_UPI}%26pn=BMS_GAME%26am=${amt}%26cu=INR`;
+            document.getElementById('qr-image').src = qrUrl;
+            document.getElementById('step-1').classList.add('hidden');
+            document.getElementById('payment-section').classList.remove('hidden');
+        }
+
+        function downloadQR() {
+            const imgUrl = document.getElementById('qr-image').src;
+            const link = document.createElement('a');
+            link.href = imgUrl;
+            link.download = 'BMS_Recharge_QR.png';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function openUPIApp() {
+            const amt = document.getElementById('final-amount').value;
+            window.location.href = `upi://pay?pa=${MY_UPI}&pn=BMS_GAME&am=${amt}&cu=INR`;
+        }
+
+        // --- UTR Validation Logic ---
+        function validateUTR() {
+            const utr = document.getElementById('utr-input').value;
+            const btn = document.getElementById('submit-btn');
+            const error = document.getElementById('utr-error');
+
+            if(utr.length === 12) {
+                btn.disabled = false;
+                btn.style.backgroundColor = "black";
+                btn.style.cursor = "pointer";
+                error.classList.add('hidden');
+            } else {
+                btn.disabled = true;
+                btn.style.backgroundColor = "#d1d5db";
+                btn.style.cursor = "not-allowed";
+                if(utr.length > 0) error.classList.remove('hidden');
+            }
+        }
+
+        function submitUTR() {
+            const utr = document.getElementById('utr-input').value;
+            const amt = document.getElementById('final-amount').value;
+            
+            db.ref('recharge_requests').push({
+                phone: userPhone,
+                amount: parseInt(amt),
+                utr: utr,
+                status: 'Pending',
+                time: Date.now()
+            }).then(() => {
+                alert("✅ Success! Request sent to Admin.");
+                window.location.href = "index.html";
+            });
+        }
+    </script>
+</body>
+</html>
